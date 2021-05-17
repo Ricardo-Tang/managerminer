@@ -1,3 +1,4 @@
 .vscode/
 *.lock
 *.txt
+config.yml

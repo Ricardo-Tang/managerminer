@@ -1,0 +1,10 @@
+url:
+  domain: https://ezil.me/personal_stats?wallet={eth}.{zil}&coin=eth
+  worker: https://stats.ezil.me/current_stats/{eth}.{zil}/workers
+  info: https://stats.ezil.me/historical_stats/{eth}.{zil}/{worker}?time_from={fromtime}&time_to={totime}
+wallet:
+  eth: "ethaddr"
+  zil: ziladdr
+worker:
+  - worker01
+  - worker02

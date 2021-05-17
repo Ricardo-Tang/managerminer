@@ -1,58 +1,75 @@
-from requests_html import HTMLSession
+import yaml
+import os
+from requests_html import  HTMLSession
 import datetime
-url=r"https://ezil.me/personal_stats?wallet=0xa66dba8f536756ce2a63d07c9660d85203947af7.zil1kysx4evfu8rz42wy088cjega2x92a8s6vfx9yc&coin=eth"
 
-workurl = r"https://stats.ezil.me/current_stats/0xa66dba8f536756ce2a63d07c9660d85203947af7.zil1kysx4evfu8rz42wy088cjega2x92a8s6vfx9yc/workers"
-detailurl = r"https://stats.ezil.me/historical_stats/0xa66dba8f536756ce2a63d07c9660d85203947af7.zil1kysx4evfu8rz42wy088cjega2x92a8s6vfx9yc/{}?time_from={}&time_to={}"
+config=""
 session=HTMLSession()
+# path os.path.join(os.path.abspath("."),"config.yml")
+def init():
+    short=os.path.join(os.path.abspath("."), "short")
+    reported = os.path.join(os.path.abspath("."), "reported")
+    if os.path.exists(short)==False:
+        os.mkdir(short)
+    if os.path.exists(reported) == False:
+        os.mkdir(reported)
+    
 
+def loadConfig(path):
+    fs = open(path, encoding="utf-8")
+    return yaml.load(fs)
 
-def getworker():
-    info=session.get(workurl).json()
-    workers=[]
-    for e in info:
-        workers.append(e['worker'])
-    return workers
+def getdetailurl(worker):
+    t = getDate()
+    return config["url"]["info"].format(eth=config["wallet"]["eth"],zil=config["wallet"]["zil"],worker=worker,fromtime=t[0],totime=t[1])
+def getinfo(worker):
+    workerinfo=session.get(getdetailurl(worker)).json()
+    short=0
+    reported=0
+    if len(workerinfo)==0:
+        short = 0
+        reported = 0
+    else:
+        short = sum([e['short_average_hashrate'] for e in workerinfo])/len(workerinfo)
+        reported = sum([e['reported_hashrate'] for e in workerinfo])/len(workerinfo)
+    return short/(10**6), reported/(10**6)
 
-
-def createtime():
-    a = datetime.datetime.today()
+def getDate():
+    a = datetime.date.today()
+    a = datetime.datetime(a.year,a.month,a.day,11,0,0)
     o1 = datetime.timedelta(hours=-8)
-    o2 = datetime.timedelta(days=-1,hours=-8)
+    o2 = datetime.timedelta(days=-1, hours=-8)
     return [(a+o2).strftime("%Y-%m-%dT%H:%M:%SZ"), (a+o1).strftime("%Y-%m-%dT%H:%M:%SZ")]
 
-def infourl(worker):
-    t = createtime()
-    return detailurl.format(worker,t[0],t[1])
 
-def getworkerinfo(worker):
-    workerinfo = session.get(detailurl.format(
-        worker, "2021-05-15T03:00:00Z", "2021-05-16T03:00:00Z")).json()
-    short = sum([e['short_average_hashrate']
-                for e in workerinfo])/len(workerinfo)
-    reported = sum([e['reported_hashrate']
-                    for e in workerinfo])/len(workerinfo)
-    print("{} {}".format(worker,len(workerinfo)))
-    return short,reported
+def outshort(infos):
+    with open("./short/{}.csv".format(datetime.date.today().strftime("%Y-%m-%d")),"w") as f:
+        for e in infos:
+            f.write("{},,".format(e['worker']))
+        f.write("\n")
+        for e in infos:
+            f.write("{:.1f},,".format(e['short']))
+        f.write("\n")
 
 
-if __name__ == "__main__":
-    workers = getworker()
-    workers.append('zmc_home')
-    infos = []
-    for eworker in workers:
-        info={}
-        info['worker']=eworker
-        info['short'],info['reported']=getworkerinfo(eworker)
-        print(info)
-        info['shorts']=info['short']/(10**6)
-        info['reporteds']=info['reported']/(10**6)
+def outreported(infos):
+    with open("./reported/{}.csv".format(datetime.date.today().strftime("%Y-%m-%d")), "w") as f:
+        for e in infos:
+            f.write("{},,".format(e['worker']))
+        f.write("\n")
+        for e in infos:
+            f.write("{:.1f},,".format(e['reported']))
+        f.write("\n")
+
+if __name__=="__main__":
+    init()
+    config = loadConfig(os.path.join(os.path.abspath("."), "config.yml"))
+    infos=[]
+    for e in config['worker']:
+        info = {}
+        info['worker'] = e
+        info['short'],info['reported']=getinfo(e)
         infos.append(info)
-    short=sum([e['short'] for e in infos])
-    reported = sum([e['reported'] for e in infos])
-    for einfo in infos:
-        print(einfo)
+    outreported(infos)
+    outshort(infos)
 
-    with open("result-0516.txt","w") as f:
-        for einfo in infos:
-            f.write("{}\t{:.1f}\t{:.1f}\t\n".format(einfo['worker'],einfo['shorts'],einfo['reporteds']))
