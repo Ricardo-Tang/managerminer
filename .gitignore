@@ -2,3 +2,6 @@
 *.lock
 *.txt
 config.yml
+.DS_Store
+short/
+reported/
